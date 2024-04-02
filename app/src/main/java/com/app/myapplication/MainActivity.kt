@@ -1,13 +1,16 @@
-package com.app.myapplication
-
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.app.myapplication.R
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -19,9 +22,21 @@ class MainActivity : AppCompatActivity() {
     private lateinit var outputDirectory: File
     private lateinit var cameraExecutor: ExecutorService
 
+    companion object {
+        private const val REQUEST_CAMERA_PERMISSION = 123
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Request camera permission if not granted
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
+        } else {
+            // Permission already granted, initialize camera
+            initializeCamera()
+        }
 
         // Find view by ID
         viewFinder = findViewById(R.id.viewFinder)
@@ -32,14 +47,16 @@ class MainActivity : AppCompatActivity() {
         // Initialize camera executor
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        // Start camera
-        startCamera()
-
         // Set onClickListener for capture buttons
         val btnCaptureFront = findViewById<Button>(R.id.btnCaptureFront)
         val btnCaptureBack = findViewById<Button>(R.id.btnCaptureBack)
         btnCaptureFront.setOnClickListener { takePhoto("front") }
         btnCaptureBack.setOnClickListener { takePhoto("back") }
+    }
+
+    private fun initializeCamera() {
+        // Start camera
+        startCamera()
     }
 
     private fun startCamera() {
@@ -67,10 +84,27 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
+
     private fun takePhoto(label: String) {
         val imageCapture = imageCapture ?: return
 
-        // The rest of your code for taking a photo
+        val photoFile = File(outputDirectory, "${System.currentTimeMillis()}.jpg")
+
+        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+
+        imageCapture.takePicture(
+            outputOptions,
+            ContextCompat.getMainExecutor(this),
+            object : ImageCapture.OnImageSavedCallback {
+                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                    // Photo saved successfully
+                }
+
+                override fun onError(exception: ImageCaptureException) {
+                    // Photo capture failed
+                }
+            }
+        )
     }
 
     private fun getOutputDirectory(): File {
@@ -80,7 +114,16 @@ class MainActivity : AppCompatActivity() {
         return mediaDir ?: filesDir
     }
 
-    companion object {
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, initialize camera
+                initializeCamera()
+            } else {
+                // Permission denied, handle accordingly
+                // For example, show a toast or dialog explaining why the permission is necessary
+            }
+        }
     }
 }
