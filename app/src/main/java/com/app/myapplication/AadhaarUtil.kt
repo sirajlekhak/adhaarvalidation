@@ -2,7 +2,7 @@ package com.app.myapplication
 
 /**
  * Validate aadhaar number using verhoeff algorithm
- * Created by Frozenex
+
  */
 class AadhaarUtil {
 

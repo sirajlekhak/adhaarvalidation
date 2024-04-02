@@ -1,41 +1,117 @@
-<?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:padding="16dp">
 
-    <androidx.camera.view.PreviewView
-        android:id="@+id/viewFinder"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+    <androidx.cardview.widget.CardView
+        android:id="@+id/imageCardView1"
+        android:layout_width="400dp"
+        android:layout_height="250dp"
+        app:cardCornerRadius="16dp"
+        android:visibility="visible">
 
-    <EditText
-        android:id="@+id/editTextAadhaar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:layout_alignParentTop="true"
-        android:hint="Enter Aadhaar Number"
-        android:inputType="number"
-        android:maxLength="12"
-        android:padding="8dp" />
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Blurred background for image capture front -->
+            <ImageView
+                android:id="@+id/imageView1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:alpha="0.4"
+                android:src="@drawable/adharfront" />
+
+            <!-- Text instructions for capturing front -->
+            <TextView
+                android:id="@+id/textCaptureFront"
+                android:layout_width="wrap_content"
+                android:background="@color/white"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="20dp"
+                android:text="Click to Capture Front Of Adhar Id"
+                android:textColor="#008CBA"
+                android:padding="2dp"
+                android:textStyle="bold"/>
+
+        </FrameLayout>
+    </androidx.cardview.widget.CardView>
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/imageCardView2"
+        android:layout_width="400dp"
+        android:layout_height="250dp"
+        android:layout_below="@id/imageCardView1"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="16dp"
+        android:visibility="visible">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Blurred background for image capture back -->
+            <ImageView
+                android:id="@+id/imageView2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:alpha="0.4"
+                android:src="@drawable/adharback" />
+
+            <!-- Text instructions for capturing back -->
+            <TextView
+                android:id="@+id/textCaptureBack"
+                android:layout_width="wrap_content"
+                android:background="@color/white"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="20dp"
+                android:text="Click to Capture Back Of Adhar Id"
+                android:textColor="#008CBA"
+                android:padding="2dp"
+                android:textStyle="bold" />
+
+        </FrameLayout>
+    </androidx.cardview.widget.CardView>
 
     <Button
-        android:id="@+id/btnCaptureFront"
+        android:id="@+id/proceedButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/editTextAadhaar"
+        android:layout_below="@+id/imageCardView2"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="16dp"
-        android:text="Capture Front" />
+        android:visibility="visible"
+        android:text="Proceed" />
 
-    <Button
-        android:id="@+id/btnCaptureBack"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/btnCaptureFront"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="16dp"
-        android:text="Capture Back" />
+    <RelativeLayout
+        android:id="@+id/validationLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <EditText
+            android:id="@+id/editTextAadhaar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter 12-digit Aadhar number"
+            android:inputType="number"
+            android:maxLength="12"
+            android:layout_centerInParent="true"/>
+
+        <Button
+            android:id="@+id/validateButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/editTextAadhaar"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="16dp"
+            android:text="Validate Aadhar ID" />
+    </RelativeLayout>
 
 </RelativeLayout>

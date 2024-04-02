@@ -1,128 +1,201 @@
+package com.app.myapplication
+
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
+import android.view.View
 import android.widget.Button
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.RelativeLayout
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
+import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.app.myapplication.R
+import androidx.core.content.FileProvider
+import com.yalantis.ucrop.UCrop
 import java.io.File
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var viewFinder: PreviewView
-    private var imageCapture: ImageCapture? = null
-    private lateinit var outputDirectory: File
-    private lateinit var cameraExecutor: ExecutorService
+    private lateinit var imageView1: ImageView
+    private lateinit var imageView2: ImageView
+    private lateinit var imageCardView1: CardView
+    private lateinit var imageCardView2: CardView
+    private lateinit var proceedButton: Button
+    private lateinit var validateButton: Button
+    private lateinit var validationLayout: RelativeLayout
+    private lateinit var editTextAadhaar: EditText
+    private var isImage1Captured = false
+    private var isImage2Captured = false
+
+    private var currentImageView: ImageView? = null
+    private lateinit var currentImageUri: Uri
 
     companion object {
-        private const val REQUEST_CAMERA_PERMISSION = 123
+        private const val REQUEST_IMAGE_CAPTURE = 1
+        private const val REQUEST_IMAGE_CROP = 2
+        private const val REQUEST_PERMISSION_CODE = 101
     }
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                dispatchTakePictureIntent()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Request camera permission if not granted
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.CAMERA), REQUEST_CAMERA_PERMISSION)
-        } else {
-            // Permission already granted, initialize camera
-            initializeCamera()
+        imageView1 = findViewById(R.id.imageView1)
+        imageView2 = findViewById(R.id.imageView2)
+        imageCardView1 = findViewById(R.id.imageCardView1)
+        imageCardView2 = findViewById(R.id.imageCardView2)
+        proceedButton = findViewById(R.id.proceedButton)
+        validateButton = findViewById(R.id.validateButton)
+        validationLayout = findViewById(R.id.validationLayout)
+        editTextAadhaar = findViewById(R.id.editTextAadhaar)
+
+        // Disable proceedbtn initially
+        proceedButton.isEnabled = false
+
+        imageView1.setOnClickListener {
+            currentImageView = imageView1
+            checkPermissionAndDispatchTakePictureIntent()
         }
 
-        // Find view by ID
-        viewFinder = findViewById(R.id.viewFinder)
+        imageView2.setOnClickListener {
+            currentImageView = imageView2
+            checkPermissionAndDispatchTakePictureIntent()
+        }
 
-        // Create output directory for storing images
-        outputDirectory = getOutputDirectory()
+        proceedButton.setOnClickListener {
+            // Hide ImageView, Button, and CardView
+            imageView1.visibility = View.GONE
+            imageView2.visibility = View.GONE
+            imageCardView1.visibility = View.GONE
+            imageCardView2.visibility = View.GONE
+            proceedButton.visibility = View.GONE
+            validationLayout.visibility = View.VISIBLE
+        }
 
-        // Initialize camera executor
-        cameraExecutor = Executors.newSingleThreadExecutor()
-
-        // Set onClickListener for capture buttons
-        val btnCaptureFront = findViewById<Button>(R.id.btnCaptureFront)
-        val btnCaptureBack = findViewById<Button>(R.id.btnCaptureBack)
-        btnCaptureFront.setOnClickListener { takePhoto("front") }
-        btnCaptureBack.setOnClickListener { takePhoto("back") }
-    }
-
-    private fun initializeCamera() {
-        // Start camera
-        startCamera()
-    }
-
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            val preview = androidx.camera.core.Preview.Builder().build().also {
-                it.setSurfaceProvider(viewFinder.surfaceProvider)
+        validateButton.setOnClickListener {
+            val aadhaarNumber = editTextAadhaar.text.toString()
+            if (validateAadhaarId(aadhaarNumber)) {
+                // Show Aadhar ID validation UI
+                Toast.makeText(this, "valid Aadhar ID", Toast.LENGTH_SHORT).show()
+            } else {
+                // Show error message if Aadhar ID is invalid
+                Toast.makeText(this, "Invalid Aadhar ID", Toast.LENGTH_SHORT).show()
             }
-
-            imageCapture = ImageCapture.Builder().build()
-
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    this, cameraSelector, preview, imageCapture
-                )
-            } catch (exc: Exception) {
-                // Handle exceptions
-            }
-        }, ContextCompat.getMainExecutor(this))
+        }
     }
 
 
-    private fun takePhoto(label: String) {
-        val imageCapture = imageCapture ?: return
+    private fun validateAadhaarId(aadhaarNumber: String): Boolean {
+        // Call the validate function from AadhaarUtil class
+        return AadhaarUtil.isAadhaarNumberValid(aadhaarNumber)
+    }
 
-        val photoFile = File(outputDirectory, "${System.currentTimeMillis()}.jpg")
+    private fun checkPermissionAndDispatchTakePictureIntent() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                REQUEST_PERMISSION_CODE
+            )
+        } else {
+            dispatchTakePictureIntent()
+        }
+    }
 
-        val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
+    private fun dispatchTakePictureIntent() {
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        if (takePictureIntent.resolveActivity(packageManager) != null) {
+            val imageFile = createImageFile()
+            currentImageUri = FileProvider.getUriForFile(
+                this,
+                "${packageName}.provider",
+                imageFile
+            )
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, currentImageUri)
+            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
+        }
+    }
 
-        imageCapture.takePicture(
-            outputOptions,
-            ContextCompat.getMainExecutor(this),
-            object : ImageCapture.OnImageSavedCallback {
-                override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    // Photo saved successfully
-                }
-
-                override fun onError(exception: ImageCaptureException) {
-                    // Photo capture failed
-                }
-            }
+    private fun createImageFile(): File {
+        val storageDir = getExternalFilesDir(null)
+        return File.createTempFile(
+            "JPEG_${UUID.randomUUID()}",
+            ".jpg",
+            storageDir
         )
     }
 
-    private fun getOutputDirectory(): File {
-        val mediaDir = externalMediaDirs.firstOrNull()?.let {
-            File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            currentImageUri.let { uri ->
+                // Customizing crop options
+                val options = UCrop.Options()
+                options.setCompressionQuality(70) // Set compression quality
+                options.setHideBottomControls(true) // Hide bottom controls
+                options.setToolbarTitle("Crop Image") // Set toolbar title
+
+                // Resize the grid on the screen by adjusting the aspect ratio
+                val aspectRatioWidth = 4f
+                val aspectRatioHeight = 3f
+                UCrop.of(uri, Uri.fromFile(createImageFile()))
+                    .withAspectRatio(aspectRatioWidth, aspectRatioHeight)
+                    .withOptions(options) // Apply custom options
+                    .start(this, REQUEST_IMAGE_CROP)
+
+                // Mark the corresponding image as captured
+                if (currentImageView == imageView1) {
+                    isImage1Captured = true
+                } else if (currentImageView == imageView2) {
+                    isImage2Captured = true
+                }
+
+                // Enable proceedButton if both images are captured
+                if (isImage1Captured && isImage2Captured) {
+                    proceedButton.isEnabled = true
+                }
+            }
+        } else if (requestCode == REQUEST_IMAGE_CROP && resultCode == RESULT_OK) {
+            val croppedUri = UCrop.getOutput(data!!)
+            // Load and display cropped image
+            currentImageView?.setImageURI(croppedUri)
+
+            // Remove the blur effect
+            currentImageView?.alpha = 1f
         }
-        return mediaDir ?: filesDir
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+
+
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+        if (requestCode == REQUEST_PERMISSION_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // Permission granted, initialize camera
-                initializeCamera()
-            } else {
-                // Permission denied, handle accordingly
-                // For example, show a toast or dialog explaining why the permission is necessary
+                dispatchTakePictureIntent()
             }
         }
     }
